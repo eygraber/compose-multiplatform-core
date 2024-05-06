@@ -27,6 +27,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModelStore
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.serialization.generateRouteWithArgs
 import kotlin.jvm.JvmOverloads
 import kotlin.jvm.JvmSuppressWildcards
 import kotlin.reflect.KClass
@@ -38,6 +39,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.serializer
 
 public actual open class NavController {
     private var _graph: NavGraph? = null
@@ -316,6 +319,44 @@ public actual open class NavController {
         return popped && dispatchOnDestinationChanged()
     }
 
+    @MainThread
+    @JvmOverloads
+    public actual inline fun <reified T : Any> popBackStack(
+        inclusive: Boolean,
+        saveState: Boolean
+    ): Boolean {
+        val id = serializer<T>().hashCode()
+        requireNotNull(findDestinationFromRoot(id)) {
+            "Destination with route ${T::class.simpleName} cannot be found in navigation " +
+                "graph $graph"
+        }
+        return popBackStack(id, inclusive, saveState)
+    }
+
+    @MainThread
+    @JvmOverloads
+    public actual fun <T : Any> popBackStack(
+        route: T,
+        inclusive: Boolean,
+        saveState: Boolean
+    ): Boolean {
+        val popped = popBackStackInternal(route, inclusive, saveState)
+        // Only return true if the pop succeeded and we've dispatched
+        // the change to a new destination
+        return popped && dispatchOnDestinationChanged()
+    }
+
+    private fun <T : Any> popBackStackInternal(
+        route: T,
+        inclusive: Boolean,
+        saveState: Boolean = false
+    ): Boolean {
+        // route contains arguments so we need to generate and pop with the populated route
+        // rather than popping based on route pattern
+        val finalRoute = generateRouteFilled(route)
+        return popBackStackInternal(finalRoute, inclusive, saveState)
+    }
+
     private fun popBackStackInternal(
         route: String,
         inclusive: Boolean,
@@ -455,6 +496,21 @@ public actual open class NavController {
         if (!saveState && !transitioning) {
             viewModel?.clear(entry.id)
         }
+    }
+
+    @MainThread
+    public actual inline fun <reified T : Any> clearBackStack(): Boolean =
+        clearBackStack(serializer<T>().hashCode())
+
+    @MainThread
+    public actual fun <T : Any> clearBackStack(route: T): Boolean {
+        // route contains arguments so we need to generate and clear with the populated route
+        // rather than clearing based on route pattern
+        val finalRoute = generateRouteFilled(route)
+        val cleared = clearBackStackInternal(finalRoute)
+        // Only return true if the clear succeeded and we've dispatched
+        // the change to a new destination
+        return cleared && dispatchOnDestinationChanged()
     }
 
     @MainThread
@@ -754,6 +810,17 @@ public actual open class NavController {
         }
 
     @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+    public fun findDestinationFromRoot(destinationId: Int): NavDestination? {
+        if (_graph == null) {
+            return null
+        }
+        if (_graph!!.id == destinationId) {
+            return _graph
+        }
+        return _graph!!.findChildNode(destinationId)
+    }
+
+    @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
     public actual fun findDestination(route: String): NavDestination? {
         if (_graph == null) {
             return null
@@ -773,6 +840,24 @@ public actual open class NavController {
         }
         val currentGraph = if (this is NavGraph) this else parent!!
         return currentGraph.findNode(destinationRoute)
+    }
+
+    // Finds destination within _graph including its children and
+    // generates a route filled with args based on the serializable object.
+    // Throws if destination with `route` is not found
+    @OptIn(InternalSerializationApi::class)
+    private fun <T : Any> generateRouteFilled(route: T): String {
+        val id = route::class.serializer().hashCode()
+        val destination = findDestinationFromRoot(id)
+        // throw immediately if destination is not found within the graph
+        requireNotNull(destination) {
+            "Destination with route ${route::class.simpleName} cannot be found " +
+                "in navigation graph $_graph"
+        }
+        return route.generateRouteWithArgs(
+            // get argument typeMap
+            destination.arguments.mapValues { it.value.type }
+        )
     }
 
     @MainThread
@@ -1110,6 +1195,26 @@ public actual open class NavController {
         }
     }
 
+    @MainThread
+    public actual fun <T : Any> navigate(route: T, builder: NavOptionsBuilder.() -> Unit) {
+        navigate(route, navOptions(builder))
+    }
+
+    @MainThread
+    @JvmOverloads
+    public actual fun <T : Any> navigate(
+        route: T,
+        navOptions: NavOptions?,
+        navigatorExtras: Navigator.Extras?
+    ) {
+        val finalRoute = generateRouteFilled(route)
+        navigate(
+            NavDestination.createRoute(finalRoute),
+            navOptions,
+            navigatorExtras
+        )
+    }
+
     @CallSuper
     public actual open fun saveState(): Bundle? {
         var b: Bundle? = null
@@ -1250,6 +1355,29 @@ public actual open class NavController {
                 "current destination is $currentDestination"
         }
         return lastFromBackStack
+    }
+
+    public actual inline fun <reified T : Any> getBackStackEntry(): NavBackStackEntry {
+        val id = serializer<T>().hashCode()
+        requireNotNull(findDestinationFromRoot(id)) {
+            "Destination with route ${T::class.simpleName} cannot be found in navigation " +
+                "graph $graph"
+        }
+        val lastFromBackStack = currentBackStack.value.lastOrNull { entry ->
+            entry.destination.id == id
+        }
+        requireNotNull(lastFromBackStack) {
+            "No destination with route ${T::class.simpleName} is on the NavController's " +
+                "back stack. The current destination is $currentDestination"
+        }
+        return lastFromBackStack
+    }
+
+    public actual fun <T : Any> getBackStackEntry(route: T): NavBackStackEntry {
+        // route contains arguments so we need to generate the populated route
+        // rather than getting entry based on route pattern
+        val finalRoute = generateRouteFilled(route)
+        return getBackStackEntry(finalRoute)
     }
 
     public actual open val currentBackStackEntry: NavBackStackEntry?

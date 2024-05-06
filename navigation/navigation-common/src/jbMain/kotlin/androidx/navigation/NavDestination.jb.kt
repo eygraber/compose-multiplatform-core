@@ -83,12 +83,30 @@ public actual open class NavDestination actual constructor(
 
     public actual constructor(navigator: Navigator<out NavDestination>) : this(navigator.name)
 
+    /**
+     * The destination's unique ID.
+     */
+    public var id: Int = 0
+
+    /**
+     * The destination's unique route. Setting this will also update the [id] of the destinations
+     * so custom destination ids should only be set after setting the route.
+     *
+     * @return this destination's route, or null if no route is set
+     *
+     * @throws IllegalArgumentException is the given route is empty
+     */
     public actual var route: String? = null
         set(route) {
-            if (field == route) return
-            require(route == null || route.isNotBlank()) { "Cannot have an empty route" }
+            if (route == null) {
+                id = 0
+            } else {
+                require(route.isNotBlank()) { "Cannot have an empty route" }
+                val internalRoute = createRoute(route)
+                id = internalRoute.hashCode()
+                addDeepLink(internalRoute)
+            }
             deepLinks.remove(deepLinks.firstOrNull { it.uriPattern == createRoute(field) })
-            addDeepLink(createRoute(route))
             field = route
         }
 
@@ -221,7 +239,7 @@ public actual open class NavDestination actual constructor(
     }
 
     public actual companion object {
-        private fun createRoute(route: String?): String =
+        public fun createRoute(route: String?): String =
             if (route != null) "multiplatform-app://androidx.navigation/$route" else ""
 
         @JvmStatic
