@@ -29,7 +29,6 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.serialization.generateRouteWithArgs
 import kotlin.jvm.JvmOverloads
-import kotlin.jvm.JvmSuppressWildcards
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlinx.coroutines.channels.BufferOverflow
@@ -1426,13 +1425,13 @@ public actual inline fun NavController.createGraph(
 public actual inline fun NavController.createGraph(
     startDestination: KClass<*>,
     route: KClass<*>?,
-    typeMap: Map<KType, @JvmSuppressWildcards NavType<*>>,
+    typeMap: Map<KType, NavType<*>>,
     builder: NavGraphBuilder.() -> Unit
 ): NavGraph = navigatorProvider.navigation(startDestination, route, typeMap, builder)
 
 public actual inline fun NavController.createGraph(
     startDestination: Any,
     route: KClass<*>?,
-    typeMap: Map<KType, @JvmSuppressWildcards NavType<*>>,
+    typeMap: Map<KType, NavType<*>>,
     builder: NavGraphBuilder.() -> Unit
 ): NavGraph = navigatorProvider.navigation(startDestination, route, typeMap, builder)

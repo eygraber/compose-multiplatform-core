@@ -20,7 +20,6 @@ import androidx.annotation.RestrictTo
 import androidx.navigation.serialization.generateNavArguments
 import androidx.navigation.serialization.generateRoutePattern
 import kotlin.jvm.JvmName
-import kotlin.jvm.JvmSuppressWildcards
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlinx.serialization.InternalSerializationApi
@@ -55,7 +54,7 @@ public actual constructor(
     public actual constructor(
         navigator: Navigator<out D>,
         @Suppress("OptionalBuilderConstructorArgument") route: KClass<*>?,
-        typeMap: Map<KType, @JvmSuppressWildcards NavType<*>>,
+        typeMap: Map<KType, NavType<*>>,
     ) : this(
         navigator,
         route?.serializer()?.generateRoutePattern(typeMap)

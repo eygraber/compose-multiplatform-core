@@ -16,7 +16,6 @@
 
 package androidx.navigation
 
-import kotlin.jvm.JvmSuppressWildcards
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
@@ -29,14 +28,14 @@ public actual inline fun NavHost.createGraph(
 public actual inline fun NavHost.createGraph(
     startDestination: KClass<*>,
     route: KClass<*>?,
-    typeMap: Map<KType, @JvmSuppressWildcards NavType<*>>,
+    typeMap: Map<KType, NavType<*>>,
     builder: NavGraphBuilder.() -> Unit
 ): NavGraph = navController.createGraph(startDestination, route, typeMap, builder)
 
 public actual inline fun NavHost.createGraph(
     startDestination: Any,
     route: KClass<*>?,
-    typeMap: Map<KType, @JvmSuppressWildcards NavType<*>>,
+    typeMap: Map<KType, NavType<*>>,
     builder: NavGraphBuilder.() -> Unit
 ): NavGraph = navController.createGraph(startDestination, route, typeMap, builder)
 

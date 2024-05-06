@@ -16,7 +16,6 @@
 
 package androidx.navigation
 
-import kotlin.jvm.JvmSuppressWildcards
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
@@ -50,7 +49,7 @@ public expect inline fun NavigatorProvider.navigation(
 public expect inline fun NavigatorProvider.navigation(
     startDestination: KClass<*>,
     route: KClass<*>? = null,
-    typeMap: Map<KType, @JvmSuppressWildcards NavType<*>> = emptyMap(),
+    typeMap: Map<KType, NavType<*>> = emptyMap(),
     builder: NavGraphBuilder.() -> Unit
 ): NavGraph
 
@@ -69,7 +68,7 @@ public expect inline fun NavigatorProvider.navigation(
 public expect inline fun NavigatorProvider.navigation(
     startDestination: Any,
     route: KClass<*>? = null,
-    typeMap: Map<KType, @JvmSuppressWildcards NavType<*>> = emptyMap(),
+    typeMap: Map<KType, NavType<*>> = emptyMap(),
     builder: NavGraphBuilder.() -> Unit
 ): NavGraph
 
@@ -102,7 +101,7 @@ public expect inline fun NavGraphBuilder.navigation(
  */
 public expect inline fun <reified T : Any> NavGraphBuilder.navigation(
     startDestination: KClass<*>,
-    typeMap: Map<KType, @JvmSuppressWildcards NavType<*>> = emptyMap(),
+    typeMap: Map<KType, NavType<*>> = emptyMap(),
     builder: NavGraphBuilder.() -> Unit
 ): Unit
 
@@ -120,7 +119,7 @@ public expect inline fun <reified T : Any> NavGraphBuilder.navigation(
  */
 public expect inline fun <reified T : Any> NavGraphBuilder.navigation(
     startDestination: Any,
-    typeMap: Map<KType, @JvmSuppressWildcards NavType<*>> = emptyMap(),
+    typeMap: Map<KType, NavType<*>> = emptyMap(),
     builder: NavGraphBuilder.() -> Unit
 ): Unit
 
@@ -159,7 +158,7 @@ public constructor(
         provider: NavigatorProvider,
         startDestination: KClass<*>,
         route: KClass<*>?,
-        typeMap: Map<KType, @JvmSuppressWildcards NavType<*>>
+        typeMap: Map<KType, NavType<*>>
     )
 
     /**
@@ -178,7 +177,7 @@ public constructor(
         provider: NavigatorProvider,
         startDestination: Any,
         route: KClass<*>?,
-        typeMap: Map<KType, @JvmSuppressWildcards NavType<*>>
+        typeMap: Map<KType, NavType<*>>
     )
     /**
      * The [NavGraphBuilder]'s [NavigatorProvider].

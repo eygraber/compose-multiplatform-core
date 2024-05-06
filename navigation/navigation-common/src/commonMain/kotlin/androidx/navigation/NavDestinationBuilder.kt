@@ -17,7 +17,6 @@
 package androidx.navigation
 
 import androidx.annotation.RestrictTo
-import kotlin.jvm.JvmSuppressWildcards
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
@@ -51,7 +50,7 @@ public constructor(navigator: Navigator<out D>, route: String?) {
     public constructor(
         navigator: Navigator<out D>,
         @Suppress("OptionalBuilderConstructorArgument") route: KClass<*>?,
-        typeMap: Map<KType, @JvmSuppressWildcards NavType<*>>,
+        typeMap: Map<KType, NavType<*>>,
     )
 
     /**

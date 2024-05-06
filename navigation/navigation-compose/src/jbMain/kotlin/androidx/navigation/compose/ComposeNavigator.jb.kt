@@ -28,7 +28,6 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavOptions
 import androidx.navigation.Navigator
 import androidx.navigation.compose.ComposeNavigator.Destination
-import kotlin.jvm.JvmSuppressWildcards
 
 public actual class ComposeNavigator : Navigator<Destination>(NAME) {
     internal actual val transitionsInProgress get() = state.transitionsInProgress
@@ -68,21 +67,21 @@ public actual class ComposeNavigator : Navigator<Destination>(NAME) {
     public actual class Destination actual constructor(
         navigator: ComposeNavigator,
         internal actual val content:
-            @Composable AnimatedContentScope.(@JvmSuppressWildcards NavBackStackEntry) -> Unit
+            @Composable AnimatedContentScope.(NavBackStackEntry) -> Unit
     ) : NavDestination(navigator) {
-        internal actual var enterTransition: (@JvmSuppressWildcards
+        internal actual var enterTransition: (
         AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null
 
-        internal actual var exitTransition: (@JvmSuppressWildcards
+        internal actual var exitTransition: (
         AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null
 
-        internal actual var popEnterTransition: (@JvmSuppressWildcards
+        internal actual var popEnterTransition: (
         AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null
 
-        internal actual var popExitTransition: (@JvmSuppressWildcards
+        internal actual var popExitTransition: (
         AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null
 
-        internal actual var sizeTransform: (@JvmSuppressWildcards
+        internal actual var sizeTransform: (
         AnimatedContentTransitionScope<NavBackStackEntry>.() -> SizeTransform?)? = null
     }
 
