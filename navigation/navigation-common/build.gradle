@@ -34,6 +34,7 @@ plugins {
     id("AndroidXPlugin")
     id("com.android.library")
     id("JetbrainsAndroidXPlugin")
+    alias(libs.plugins.kotlinSerialization)
 }
 
 JetbrainsAndroidXPlugin.applyAndConfigure(project)
@@ -78,6 +79,7 @@ kotlin {
                 api project(":lifecycle:lifecycle-viewmodel")
                 api project(":lifecycle:lifecycle-viewmodel-savedstate")
                 api project(":savedstate:savedstate")
+                implementation(libs.kotlinSerializationCore)
 
                 api(libs.kotlinStdlib)
             }

@@ -19,6 +19,8 @@
 package androidx.navigation
 
 import androidx.annotation.IdRes
+import kotlin.reflect.KClass
+import kotlin.reflect.KType
 
 /**
  * Construct a new [NavGraph]
@@ -45,3 +47,38 @@ public actual inline fun NavHost.createGraph(
     route: String?,
     builder: NavGraphBuilder.() -> Unit
 ): NavGraph = navController.createGraph(startDestination, route, builder)
+
+/**
+ * Construct a new [NavGraph]
+ *
+ * @param startDestination the starting destination's route from a [KClass] for this NavGraph. The
+ * respective NavDestination must be added as a [KClass] in order to match.
+ * @param route the graph's unique route from a [KClass]
+ * @param typeMap A mapping of KType to custom NavType<*> in the [route]. May be empty if [route]
+ * does not use custom NavTypes.
+ * @param builder the builder used to construct the graph
+ */
+public actual inline fun NavHost.createGraph(
+    startDestination: KClass<*>,
+    route: KClass<*>?,
+    typeMap: Map<KType, @JvmSuppressWildcards NavType<*>>,
+    builder: NavGraphBuilder.() -> Unit
+): NavGraph = navController.createGraph(startDestination, route, typeMap, builder)
+
+/**
+ * Construct a new [NavGraph]
+ *
+ * @param startDestination the starting destination's route from an Object for this NavGraph. The
+ * respective NavDestination must be added as a [KClass] in order to match.
+ * @param route the graph's unique route from a [KClass]
+ * @param typeMap A mapping of KType to custom NavType<*> in the [route]. May be empty if [route]
+ * does not use custom NavTypes.
+ * @param builder the builder used to construct the graph
+ */
+public actual inline fun NavHost.createGraph(
+    startDestination: Any,
+    route: KClass<*>?,
+    typeMap: Map<KType, @JvmSuppressWildcards NavType<*>>,
+    builder: NavGraphBuilder.() -> Unit
+): NavGraph = navController.createGraph(startDestination, route, typeMap, builder)
+

@@ -65,6 +65,95 @@ internal object UriCodec {
     }
 
     /**
+     * Encodes characters in the given string as '%'-escaped octets
+     * using the UTF-8 scheme. Leaves letters ("A-Z", "a-z"), numbers
+     * ("0-9"), and unreserved characters ("_-!.~'()*") intact. Encodes
+     * all other characters with the exception of those specified in the
+     * allow argument.
+     *
+     * @param s string to encode
+     * @param allow set of additional characters to allow in the encoded form,
+     *  null if no characters should be skipped
+     * @return an encoded version of s suitable for use as a URI component
+     */
+    fun encode(s: String, allow: String? = null): String {
+        // Lazily-initialized buffers.
+        var encoded: StringBuilder? = null
+
+        val oldLength: Int = s.length
+
+        // This loop alternates between copying over allowed characters and
+        // encoding in chunks. This results in fewer method calls and
+        // allocations than encoding one character at a time.
+        var current = 0
+        while(current < oldLength) {
+            // Start in "copying" mode where we copy over allowed chars.
+
+            // Find the next character which needs to be encoded.
+            var nextToEncode = current
+            while(nextToEncode < oldLength && isAllowed(s[nextToEncode], allow)) {
+                nextToEncode++
+            }
+
+            // If there's nothing more to encode...
+            if(nextToEncode == oldLength) {
+                return if(current == 0) {
+                    // We didn't need to encode anything!
+                    s
+                }
+                else {
+                    // Presumably, we've already done some encoding.
+                    encoded!!.append(s, current, oldLength)
+                    encoded.toString()
+                }
+            }
+
+            if(encoded == null) {
+                encoded = StringBuilder()
+            }
+
+            if(nextToEncode > current) {
+                // Append allowed characters leading up to this point.
+                encoded.append(s, current, nextToEncode)
+            }
+            else {
+                // assert nextToEncode == current
+            }
+
+            // Switch to "encoding" mode.
+
+            // Find the next allowed character.
+            current = nextToEncode
+            var nextAllowed = current + 1
+            while(nextAllowed < oldLength && !isAllowed(s[nextAllowed], allow)) {
+                nextAllowed++
+            }
+
+            // Convert the substring to bytes and encode the bytes as
+            // '%'-escaped octets.
+            val toEncode = s.substring(current, nextAllowed)
+            try {
+                val bytes: ByteArray = toEncode.encodeToByteArray()
+                val bytesLength = bytes.size
+                for(i in 0 until bytesLength) {
+                    encoded.append('%')
+                    encoded.append(hexDigits[bytes[i].toInt() and 0xf0 shr 4])
+                    encoded.append(hexDigits[bytes[i].toInt() and 0xf])
+                }
+            }
+            catch(e: Exception) {
+                throw AssertionError(e)
+            }
+            current = nextAllowed
+        }
+
+        ByteArray(0).decodeToString()
+
+        // Encoded could still be null at this point if s is empty.
+        return encoded?.toString() ?: s
+    }
+
+    /**
      * Decode a string according to the rules of this decoder.
      *
      * - if `convertPlus == true` all ‘+’ chars in the decoded output are converted to ‘ ‘
@@ -168,3 +257,25 @@ internal object UriCodec {
         flush()
     }
 }
+
+/**
+ * Returns true if the given character is allowed.
+ *
+ * @param c character to check
+ * @param allow characters to allow
+ * @return true if the character is allowed or false if it should be
+ * encoded
+ */
+private fun isAllowed(c: Char, allow: String?): Boolean =
+    c in lowercaseAsciiAlphaRange ||
+        c in uppercaseAsciiAlphaRange ||
+        c in digitAsciiRange ||
+        c in defaultAllowedSet ||
+        allow != null &&
+        allow.indexOf(c) != -1
+
+private val lowercaseAsciiAlphaRange = 'a'..'z'
+private val uppercaseAsciiAlphaRange = 'A'..'Z'
+private val digitAsciiRange = '0'..'9'
+private val defaultAllowedSet = setOf('_', '-', '!', '.', '~', '\'', '(', ')', '*')
+private val hexDigits = charArrayOf('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F')

@@ -47,6 +47,8 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.reflect.KClass
+import kotlin.reflect.KType
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -2593,3 +2595,37 @@ public actual inline fun NavController.createGraph(
     route: String?,
     builder: NavGraphBuilder.() -> Unit
 ): NavGraph = navigatorProvider.navigation(startDestination, route, builder)
+
+/**
+ * Construct a new [NavGraph]
+ *
+ * @param startDestination the starting destination's route from a [KClass] for this NavGraph. The
+ * respective NavDestination must be added as a [KClass] in order to match.
+ * @param route the graph's unique route from a [KClass]
+ * @param typeMap A mapping of KType to custom NavType<*> in the [route]. May be empty if [route]
+ * does not use custom NavTypes.
+ * @param builder the builder used to construct the graph
+ */
+public actual inline fun NavController.createGraph(
+    startDestination: KClass<*>,
+    route: KClass<*>?,
+    typeMap: Map<KType, @JvmSuppressWildcards NavType<*>>,
+    builder: NavGraphBuilder.() -> Unit
+): NavGraph = navigatorProvider.navigation(startDestination, route, typeMap, builder)
+
+/**
+ * Construct a new [NavGraph]
+ *
+ * @param startDestination the starting destination's route from an Object for this NavGraph. The
+ * respective NavDestination must be added as a [KClass] in order to match.
+ * @param route the graph's unique route from a [KClass]
+ * @param typeMap A mapping of KType to custom NavType<*> in the [route]. May be empty if [route]
+ * does not use custom NavTypes.
+ * @param builder the builder used to construct the graph
+ */
+public actual inline fun NavController.createGraph(
+    startDestination: Any,
+    route: KClass<*>?,
+    typeMap: Map<KType, @JvmSuppressWildcards NavType<*>>,
+    builder: NavGraphBuilder.() -> Unit
+): NavGraph = navigatorProvider.navigation(startDestination, route, typeMap, builder)

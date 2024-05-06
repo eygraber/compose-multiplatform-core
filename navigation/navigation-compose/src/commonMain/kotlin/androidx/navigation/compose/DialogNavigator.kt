@@ -67,3 +67,5 @@ public expect class DialogNavigator : Navigator<Destination> {
         internal val NAME: String
     }
 }
+
+@PublishedApi internal val DialogNavigator.Companion.name get() = DialogNavigator.NAME

@@ -101,3 +101,5 @@ public expect class ComposeNavigator : Navigator<Destination> {
         internal val NAME: String
     }
 }
+
+@PublishedApi internal val ComposeNavigator.Companion.name get() = ComposeNavigator.NAME

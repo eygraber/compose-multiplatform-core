@@ -17,13 +17,15 @@ package androidx.navigation
 
 import androidx.annotation.RestrictTo
 import kotlin.jvm.JvmStatic
+import kotlin.reflect.KClass
+import kotlinx.serialization.KSerializer
 
 /**
  * NavGraph is a collection of [NavDestination] nodes fetchable by ID.
  *
  * A NavGraph serves as a 'virtual' destination: while the NavGraph itself will not appear
  * on the back stack, navigating to the NavGraph will cause the
- * starting destination to be added to the back stack.
+ * [starting destination][getStartDestination] to be added to the back stack.
  *
  * Construct a new NavGraph. This NavGraph is not valid until you
  * [add a destination][addDestination] and [set the starting destination][setStartDestination].
@@ -84,6 +86,24 @@ public expect open class NavGraph(
     public fun findNode(route: String, searchParents: Boolean): NavDestination?
 
     /**
+     * Finds a destination in the collection by route from [KClass]. This will recursively check the
+     * [parent][parent] of this navigation graph if node is not found in this navigation graph.
+     *
+     * @param T Route from a [KClass] to locate
+     * @return the node with route - the node must have been created with a route from [KClass]
+     */
+    public inline fun <reified T> findNode(): NavDestination?
+
+    /**
+     * Finds a destination in the collection by route from Object. This will recursively check the
+     * [parent][parent] of this navigation graph if node is not found in this navigation graph.
+     *
+     * @param route Route to locate
+     * @return the node with route - the node must have been created with a route from [KClass]
+     */
+    public fun <T> findNode(route: T?): NavDestination?
+
+    /**
      * @throws NoSuchElementException if there no more elements
      */
     public final override fun iterator(): MutableIterator<NavDestination>
@@ -118,6 +138,33 @@ public expect open class NavGraph(
     public fun setStartDestination(startDestRoute: String)
 
     /**
+     * Sets the starting destination for this NavGraph.
+     *
+     * This will override any previously set [startDestinationRoute]
+     *
+     * @param T The route of the destination as a [KClass] to be shown when navigating
+     * to this NavGraph.
+     */
+    public inline fun <reified T : Any> setStartDestination()
+
+    /**
+     * Sets the starting destination for this NavGraph.
+     *
+     * This will override any previously set [startDestinationRoute]
+     *
+     * @param startDestRoute The route of the destination as an object to be shown when navigating
+     * to this NavGraph.
+     */
+    public fun <T : Any> setStartDestination(startDestRoute: T)
+
+    // unfortunately needs to be public so reified setStartDestination can access this
+    @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+    public fun <T> setStartDestination(
+        serializer: KSerializer<T>,
+        parseRoute: (NavDestination) -> String,
+    )
+
+    /**
      * The route for the starting destination for this NavGraph. When navigating to the
      * NavGraph, the destination represented by this route is the one the user will initially see.
      */
@@ -143,8 +190,28 @@ public expect open class NavGraph(
  */
 public expect inline operator fun NavGraph.get(route: String): NavDestination
 
+/**
+ * Returns the destination with `route` from [KClass].
+ *
+ * @throws IllegalArgumentException if no destination is found with that route.
+ */
+public expect inline operator fun <reified T : Any> NavGraph.get(route: KClass<T>): NavDestination
+
+/**
+ * Returns the destination with `route` from an Object.
+ *
+ * @throws IllegalArgumentException if no destination is found with that route.
+ */
+public expect inline operator fun <T : Any> NavGraph.get(route: T): NavDestination
+
 /** Returns `true` if a destination with `route` is found in this navigation graph. */
 public expect operator fun NavGraph.contains(route: String): Boolean
+
+/** Returns `true` if a destination with `route` is found in this navigation graph. */
+public expect inline operator fun <reified T : Any> NavGraph.contains(route: KClass<T>): Boolean
+
+/** Returns `true` if a destination with `route` is found in this navigation graph. */
+public expect operator fun <T : Any> NavGraph.contains(route: T): Boolean
 
 /**
  * Adds a destination to this NavGraph. The destination must have a route set.

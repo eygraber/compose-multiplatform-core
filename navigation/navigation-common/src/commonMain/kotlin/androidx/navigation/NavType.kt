@@ -29,6 +29,7 @@ import kotlin.jvm.JvmStatic
  * You should only use one of the static NavType instances and subclasses defined in this class.
  *
  * @param T the type of the data that is supported by this NavType
+ * @param isNullableAllowed whether an argument with this type can hold a null value.
  */
 public expect abstract class NavType<T>(
     isNullableAllowed: Boolean
@@ -127,6 +128,14 @@ public expect abstract class NavType<T>(
      */
     public open val name: String
 
+    /**
+     * Compares two values of type [T] and returns true if values are equal.
+     *
+     * @param value the first value for comparison
+     * @param other the second value for comparison
+     */
+    public open fun valueEquals(value: T, other: T): Boolean
+
     public companion object {
         /**
          * Parse an argType string into a NavType.
@@ -176,6 +185,15 @@ public expect abstract class NavType<T>(
         public val IntArrayType: NavType<IntArray?>
 
         /**
+         * NavType for storing list of Ints.
+         *
+         * Null values are supported.
+         * List NavTypes in Navigation XML files are not supported.
+         */
+        @JvmField
+        public val IntListType: NavType<List<Int>?>
+
+        /**
          * NavType for storing long values,
          * corresponding with the "long" type in a Navigation XML file.
          *
@@ -197,6 +215,15 @@ public expect abstract class NavType<T>(
         public val LongArrayType: NavType<LongArray?>
 
         /**
+         * NavType for storing list of Longs.
+         *
+         * Null values are supported.
+         * List NavTypes in Navigation XML files are not supported.
+         */
+        @JvmField
+        public val LongListType: NavType<List<Long>?>
+
+        /**
          * NavType for storing float values,
          * corresponding with the "float" type in a Navigation XML file.
          *
@@ -214,6 +241,15 @@ public expect abstract class NavType<T>(
          */
         @JvmField
         public val FloatArrayType: NavType<FloatArray?>
+
+        /**
+         * NavType for storing list of Floats.
+         *
+         * Null values are supported.
+         * List NavTypes in Navigation XML files are not supported.
+         */
+        @JvmField
+        public val FloatListType: NavType<List<Float>?>
 
         /**
          * NavType for storing boolean values,
@@ -235,6 +271,15 @@ public expect abstract class NavType<T>(
         public val BoolArrayType: NavType<BooleanArray?>
 
         /**
+         * NavType for storing list of Booleans.
+         *
+         * Null values are supported.
+         * List NavTypes in Navigation XML files are not supported.
+         */
+        @JvmField
+        public val BoolListType: NavType<List<Boolean>?>
+
+        /**
          * NavType for storing String values,
          * corresponding with the "string" type in a Navigation XML file.
          *
@@ -252,5 +297,14 @@ public expect abstract class NavType<T>(
          */
         @JvmField
         public val StringArrayType: NavType<Array<String>?>
+
+        /**
+         * NavType for storing list of Strings.
+         *
+         * Null values are supported.
+         * List NavTypes in Navigation XML files are not supported.
+         */
+        @JvmField
+        public val StringListType: NavType<List<String>?>
     }
 }

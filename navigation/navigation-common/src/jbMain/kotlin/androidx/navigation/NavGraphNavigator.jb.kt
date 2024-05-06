@@ -56,7 +56,7 @@ public actual open class NavGraphNavigator actual constructor(
     ) {
         val destination = entry.destination as NavGraph
         // contains restored args or args passed explicitly as startDestinationArgs
-        val args = entry.arguments
+        var args = entry.arguments
         val startRoute = destination.startDestinationRoute
         check(startRoute != null) {
             ("no start destination defined via app:startDestination for ${destination.displayName}")

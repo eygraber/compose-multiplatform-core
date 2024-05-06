@@ -17,7 +17,13 @@
 package androidx.navigation
 
 import androidx.annotation.RestrictTo
+import androidx.navigation.serialization.generateRouteWithArgs
 import kotlin.jvm.JvmStatic
+import kotlin.reflect.KClass
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.serializer
 
 public actual open class NavGraph actual constructor(
     navGraphNavigator: Navigator<out NavGraph>
@@ -81,6 +87,16 @@ public actual open class NavGraph actual constructor(
 
     public actual fun findNode(route: String?): NavDestination? {
         return if (!route.isNullOrBlank()) findNode(route, true) else null
+    }
+
+    public actual inline fun <reified T> findNode(): NavDestination? {
+        return findNode(serializer<T>().hashCode())
+    }
+
+    @OptIn(InternalSerializationApi::class)
+    @Suppress("UNNECESSARY_NOT_NULL_ASSERTION")
+    public actual fun <T> findNode(route: T?): NavDestination? {
+        return if (route != null) findNode(route!!::class.serializer().hashCode()) else null
     }
 
     @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
@@ -149,6 +165,40 @@ public actual open class NavGraph actual constructor(
         startDestinationRoute = startDestRoute
     }
 
+    public actual inline fun <reified T : Any> setStartDestination() {
+        setStartDestination(serializer<T>()) { startDestination ->
+            startDestination.route!!
+        }
+    }
+
+    @OptIn(InternalSerializationApi::class)
+    public actual fun <T : Any> setStartDestination(startDestRoute: T) {
+        setStartDestination(startDestRoute::class.serializer()) { startDestination ->
+            val args = startDestination.arguments.mapValues {
+                it.value.type
+            }
+            startDestRoute.generateRouteWithArgs(args)
+        }
+    }
+
+    // unfortunately needs to be public so reified setStartDestination can access this
+    @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+    @OptIn(ExperimentalSerializationApi::class)
+    public actual fun <T> setStartDestination(
+        serializer: KSerializer<T>,
+        parseRoute: (NavDestination) -> String,
+    ) {
+        val id = serializer.hashCode()
+        val startDest = findNode(id)
+        checkNotNull(startDest) {
+            "Cannot find startDestination ${serializer.descriptor.serialName} from NavGraph. " +
+                "Ensure the starting NavDestination was added with route from KClass."
+        }
+        // when dest id is based on serializer, we expect the dest route to have been generated
+        // and set
+        startDestinationRoute = parseRoute(startDest)
+    }
+
     public actual var startDestinationRoute: String? = null
 
     public override fun toString(): String {
@@ -205,8 +255,37 @@ public actual inline operator fun NavGraph.get(route: String): NavDestination =
     findNode(route)
         ?: throw IllegalArgumentException("No destination for $route was found in $this")
 
+/**
+ * Returns the destination with `route` from [KClass].
+ *
+ * @throws IllegalArgumentException if no destination is found with that route.
+ */
+@Suppress("NOTHING_TO_INLINE")
+
+public actual inline operator fun <reified T : Any> NavGraph.get(route: KClass<T>): NavDestination =
+    findNode<T>()
+        ?: throw IllegalArgumentException("No destination for $route was found in $this")
+
+/**
+ * Returns the destination with `route` from an Object.
+ *
+ * @throws IllegalArgumentException if no destination is found with that route.
+ */
+@Suppress("NOTHING_TO_INLINE")
+public actual inline operator fun <T : Any> NavGraph.get(route: T): NavDestination =
+    findNode(route)
+        ?: throw IllegalArgumentException("No destination for $route was found in $this")
+
 /** Returns `true` if a destination with `route` is found in this navigation graph. */
 public actual operator fun NavGraph.contains(route: String): Boolean = findNode(route) != null
+
+/** Returns `true` if a destination with `route` is found in this navigation graph. */
+@Suppress("UNUSED_PARAMETER")
+public actual inline operator fun <reified T : Any> NavGraph.contains(route: KClass<T>): Boolean =
+    findNode<T>() != null
+
+/** Returns `true` if a destination with `route` is found in this navigation graph. */
+public actual operator fun <T : Any> NavGraph.contains(route: T): Boolean = findNode(route) != null
 
 /**
  * Adds a destination to this NavGraph. The destination must have a route set.

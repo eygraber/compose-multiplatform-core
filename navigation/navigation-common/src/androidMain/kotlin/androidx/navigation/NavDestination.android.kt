@@ -513,7 +513,7 @@ public actual open class NavDestination actual constructor(
      * @return the [NavAction] mapped to the given action id, or null if one has not been set
      */
     public fun getAction(@IdRes id: Int): NavAction? {
-        val destination = if (actions.isEmpty) null else actions[id]
+        val destination = if (actions.isEmpty()) null else actions[id]
         // Search the parent for the given action if it is not found in this destination
         return destination ?: parent?.run { getAction(id) }
     }

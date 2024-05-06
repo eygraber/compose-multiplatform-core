@@ -18,23 +18,35 @@
 
 package androidx.navigation.serialization
 
+import androidx.annotation.RestrictTo
 import androidx.navigation.NamedNavArgument
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
-import androidx.navigation.serialization.UNKNOWN.isPrimitive
 import kotlin.reflect.KType
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.PolymorphicSerializer
+import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.capturedKClass
+import kotlinx.serialization.serializer
 
 /**
  * Generates a route pattern for use in Navigation functions such as [::navigate] from
  * a serializer of class T where T is a concrete class or object.
  *
- * The generated route pattern contains the path, path args, and query args. Non-nullable arg types
- * are appended as path args, while nullable arg types are appended as query args.
+ * The generated route pattern contains the path, path args, and query args.
+ * See [RouteBuilder.Builder.computeParamType] for logic on how parameter type (path or query)
+ * is computed.
+ *
+ * @param [typeMap] A mapping of KType to the custom NavType<*>. For example given
+ * an argument of "val userId: UserId", the map should contain [typeOf<UserId>() to MyNavType].
+ * @param [path] The base path to append arguments to. If null, base path defaults to
+ * [KSerializer.descriptor].serialName.
  */
-internal fun <T> KSerializer<T>.generateRoutePattern(): String {
+internal fun <T> KSerializer<T>.generateRoutePattern(
+    typeMap: Map<KType, NavType<*>> = emptyMap(),
+    path: String? = null,
+): String {
     assertNotAbstractClass {
         throw IllegalArgumentException(
             "Cannot generate route pattern from polymorphic class " +
@@ -43,32 +55,21 @@ internal fun <T> KSerializer<T>.generateRoutePattern(): String {
         )
     }
 
-    val path = descriptor.serialName
-
-    var pathArg = ""
-    var queryArg = ""
-
-    // TODO refactor to use RouteBuilder when implementing route with args to ensure
-    // same logic for both route generation
+    val map = mutableMapOf<String, NavType<Any?>>()
     for (i in 0 until descriptor.elementsCount) {
         val argName = descriptor.getElementName(i)
-        val type = descriptor.getElementDescriptor(i).getNavType()
-        /**
-         * Path args if all conditions met:
-         * 1. is primitive - arrays need repeated arg names & custom classes need to be parsed to
-         * json string
-         * 2. not optional (has no default value) - from perspective of DeepLinking, args with
-         * default values are not a core arg
-         */
-        if (type.isPrimitive() && !descriptor.isElementOptional(i)) {
-            pathArg += "/{$argName}"
-        } else {
-            val symbol = if (queryArg.isEmpty()) "?" else "&"
-            queryArg += "$symbol$argName={$argName}"
-        }
+        val type = descriptor.getElementDescriptor(i).computeNavType(argName, typeMap)
+        map[argName] = type
     }
-
-    return path + pathArg + queryArg
+    val builder = if (path != null) {
+        RouteBuilder.Pattern(path, this, map)
+    } else {
+        RouteBuilder.Pattern(this, map)
+    }
+    for (elementIndex in 0 until descriptor.elementsCount) {
+        builder.addArg(elementIndex)
+    }
+    return builder.build()
 }
 
 /**
@@ -95,7 +96,7 @@ internal fun <T> KSerializer<T>.generateRoutePattern(): String {
  * implementation of NavType<Int>.
  */
 internal fun <T> KSerializer<T>.generateNavArguments(
-    typeMap: Map<KType, NavType<*>>? = null
+    typeMap: Map<KType, NavType<*>> = emptyMap()
 ): List<NamedNavArgument> {
     assertNotAbstractClass {
         throw IllegalArgumentException(
@@ -109,16 +110,7 @@ internal fun <T> KSerializer<T>.generateNavArguments(
         navArgument(name) {
             val element = descriptor.getElementDescriptor(index)
             val isNullable = element.isNullable
-            val customType = typeMap?.keys
-                ?.find { kType -> element.matchKType(kType) }
-                ?.let { typeMap[it] }
-            type = customType ?: element.getNavType()
-            if (type == UNKNOWN) {
-                throw IllegalArgumentException(
-                    "Cannot cast $name of type ${element.serialName} to a NavType. Make sure " +
-                        "to provide custom NavType for this argument."
-                )
-            }
+            type = element.computeNavType(name, typeMap)
             nullable = isNullable
             if (descriptor.isElementOptional(index)) {
                 // Navigation mostly just cares about defaultValuePresent state for
@@ -131,9 +123,51 @@ internal fun <T> KSerializer<T>.generateNavArguments(
     }
 }
 
+/**
+ * Generates a route filled in with argument value for use in Navigation functions such as
+ * [::navigate] from a destination instance of type T.
+ *
+ * The generated route pattern contains the path, path args, and query args.
+ * See [RouteBuilder.Builder.computeParamType] for logic on how parameter type (path or query)
+ * is computed.
+ *
+ * [T] as receiver to allow secondary constructors for nav builders (i.e. NavGraphBuilder)
+ * to take object <T : Any> as parameter
+ */
+@OptIn(InternalSerializationApi::class)
+@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+public fun <T : Any> T.generateRouteWithArgs(
+    typeMap: Map<String, NavType<Any?>>
+): String = RouteEncoder(this::class.serializer(), typeMap).encodeRouteWithArgs(this)
+
 private fun <T> KSerializer<T>.assertNotAbstractClass(handler: () -> Unit) {
     // abstract class
     if (this is PolymorphicSerializer) {
         handler()
     }
+}
+
+/**
+ * Computes and return the [NavType] based on the SerialDescriptor of a class type.
+ *
+ * Match priority:
+ * 1. Match with custom NavType provided in [typeMap]
+ * 2. Match to a built-in NavType such as [NavType.IntType], [NavType.BoolArrayType] etc.
+ */
+@Suppress("UNCHECKED_CAST")
+private fun SerialDescriptor.computeNavType(
+    name: String,
+    typeMap: Map<KType, NavType<*>>
+): NavType<Any?> {
+    val customType = typeMap.keys
+        .find { kType -> matchKType(kType) }
+        ?.let { typeMap[it] } as? NavType<Any?>
+    val result = customType ?: getNavType()
+    if (result == UNKNOWN) {
+        throw IllegalArgumentException(
+            "Cannot cast $name of type $serialName to a NavType. Make sure " +
+                "to provide custom NavType for this argument."
+        )
+    }
+    return result as NavType<Any?>
 }
