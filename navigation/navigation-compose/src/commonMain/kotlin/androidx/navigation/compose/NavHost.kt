@@ -46,7 +46,6 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.NavHost
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.Navigator
@@ -522,6 +521,38 @@ public fun NavHost(
             }
         }
 
+        val finalSizeTransform:
+            AnimatedContentTransitionScope<NavBackStackEntry>.() -> SizeTransform? = {
+            val targetDestination = targetState.destination as ComposeNavigator.Destination
+
+            targetDestination.hierarchy.firstNotNullOfOrNull { destination ->
+                destination.createSizeTransform(this)
+            } ?: sizeTransform?.invoke(this)
+        }
+
+        DisposableEffect(true) {
+            onDispose {
+                visibleEntries.forEach { entry ->
+                    composeNavigator.onTransitionComplete(entry)
+                }
+            }
+        }
+
+//        val transitionState = remember {
+//            // The state returned here cannot be nullable cause it produces the input of the
+//            // transitionSpec passed into the AnimatedContent and that must match the non-nullable
+//            // scope exposed by the transitions on the NavHost and composable APIs.
+//            SeekableTransitionState(backStackEntry)
+//        }
+
+//        LaunchedEffect(backStackEntry) {
+//            // This ensures we don't animate after the back gesture is cancelled and we
+//            // are already on the current state
+//            if (transitionState.currentState != backStackEntry) {
+//                transitionState.animateTo(backStackEntry)
+//            }
+//        }
+
         val transition = updateTransition(backStackEntry, label = "entry")
         transition.AnimatedContent(
             modifier,
@@ -538,7 +569,8 @@ public fun NavHost(
                         else -> initialZIndex + 1f
                     }.also { zIndices[targetState.id] = it }
 
-                    ContentTransform(finalEnter(this), finalExit(this), targetZIndex)
+                    ContentTransform(finalEnter(this), finalExit(this), targetZIndex,
+                        finalSizeTransform(this))
                 } else {
                     EnterTransition.None togetherWith ExitTransition.None
                 }
@@ -569,13 +601,6 @@ public fun NavHost(
                 zIndices
                     .filter { it.key != transition.targetState.id }
                     .forEach { zIndices.remove(it.key) }
-            }
-        }
-        DisposableEffect(true) {
-            onDispose {
-                visibleEntries.forEach { entry ->
-                    composeNavigator.onTransitionComplete(entry)
-                }
             }
         }
     }
@@ -616,5 +641,13 @@ private fun NavDestination.createPopExitTransition(
 ): ExitTransition? = when (this) {
     is ComposeNavigator.Destination -> this.popExitTransition?.invoke(scope)
     is ComposeNavGraphNavigator.ComposeNavGraph -> this.popExitTransition?.invoke(scope)
+    else -> null
+}
+
+private fun NavDestination.createSizeTransform(
+    scope: AnimatedContentTransitionScope<NavBackStackEntry>
+): SizeTransform? = when (this) {
+    is ComposeNavigator.Destination -> this.sizeTransform?.invoke(scope)
+    is ComposeNavGraphNavigator.ComposeNavGraph -> this.sizeTransform?.invoke(scope)
     else -> null
 }
