@@ -345,6 +345,17 @@ public actual open class NavController {
         return popped && dispatchOnDestinationChanged()
     }
 
+    @PublishedApi internal fun popBackStack(
+        id: Int,
+        inclusive: Boolean,
+        saveState: Boolean
+    ): Boolean {
+        val popped = popBackStackInternal(id, inclusive, saveState)
+        // Only return true if the pop succeeded and we've dispatched
+        // the change to a new destination
+        return popped && dispatchOnDestinationChanged()
+    }
+
     private fun <T : Any> popBackStackInternal(
         route: T,
         inclusive: Boolean,
@@ -354,6 +365,43 @@ public actual open class NavController {
         // rather than popping based on route pattern
         val finalRoute = generateRouteFilled(route)
         return popBackStackInternal(finalRoute, inclusive, saveState)
+    }
+
+    private fun popBackStackInternal(
+        id: Int,
+        inclusive: Boolean,
+        saveState: Boolean = false
+    ): Boolean {
+        if (backQueue.isEmpty()) {
+            // Nothing to pop if the back stack is empty
+            return false
+        }
+        val popOperations = mutableListOf<Navigator<*>>()
+        val iterator = backQueue.reversed().iterator()
+        var foundDestination: NavDestination? = null
+        while (iterator.hasNext()) {
+            val destination = iterator.next().destination
+            val navigator = _navigatorProvider.getNavigator<Navigator<*>>(
+                destination.navigatorName
+            )
+            if (inclusive || destination.id != id) {
+                popOperations.add(navigator)
+            }
+            if (destination.id == id) {
+                foundDestination = destination
+                break
+            }
+        }
+        if (foundDestination == null) {
+            // We were passed a route that doesn't exist on our back stack.
+            // Better to ignore the popBackStack than accidentally popping the entire stack
+            println(
+                "Ignoring popBackStack to destination id $id as it was not found " +
+                    "on the current back stack"
+            )
+            return false
+        }
+        return executePopOperations(popOperations, saveState)
     }
 
     private fun popBackStackInternal(
@@ -387,13 +435,11 @@ public actual open class NavController {
             )
             return false
         }
-        return executePopOperations(popOperations, foundDestination, inclusive, saveState)
+        return executePopOperations(popOperations, saveState)
     }
 
     private fun executePopOperations(
         popOperations: List<Navigator<*>>,
-        foundDestination: NavDestination,
-        inclusive: Boolean,
         saveState: Boolean,
     ): Boolean {
         var popped = false
@@ -1180,7 +1226,8 @@ public actual open class NavController {
                 "NavController $this."
         }
 
-        val deepLinkMatch = _graph!!.matchDeepLink(route)
+        val internalRoute = NavDestination.createRoute(route)
+        val deepLinkMatch = _graph!!.matchDeepLink(internalRoute)
         if (deepLinkMatch != null) {
             val destination = deepLinkMatch.destination
             val args = destination.addInDefaultArgs(deepLinkMatch.matchingArgs) ?: Bundle()
@@ -1208,7 +1255,7 @@ public actual open class NavController {
     ) {
         val finalRoute = generateRouteFilled(route)
         navigate(
-            NavDestination.createRoute(finalRoute),
+            finalRoute,
             navOptions,
             navigatorExtras
         )

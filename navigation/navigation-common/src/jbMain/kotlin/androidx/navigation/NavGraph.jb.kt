@@ -242,8 +242,6 @@ public actual open class NavGraph actual constructor(
             "Cannot find startDestination ${serializer.descriptor.serialName} from NavGraph. " +
                 "Ensure the starting NavDestination was added with route from KClass."
         }
-        // when dest id is based on serializer, we expect the dest route to have been generated
-        // and set
         startDestinationRoute = parseRoute(startDest)
     }
 
@@ -259,8 +257,6 @@ public actual open class NavGraph actual constructor(
             require(!startDestRoute.isNullOrBlank()) {
                 "Cannot have an empty start destination route"
             }
-            val internalRoute = createRoute(startDestRoute)
-            internalRoute.hashCode()
             field = startDestRoute
         }
 

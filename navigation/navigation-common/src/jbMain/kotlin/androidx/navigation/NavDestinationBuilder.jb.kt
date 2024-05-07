@@ -39,17 +39,23 @@ public actual open class NavDestinationBuilder<out D : NavDestination>
  *
  * @return the newly constructed [NavDestination]
  */
-public actual constructor(
+internal constructor(
     /**
      * The navigator the destination was created from
      */
     protected actual val navigator: Navigator<out D>,
-
+    /**
+     * The destination's unique ID.
+     */
+    public val id: Int,
     /**
      * The destination's unique route.
      */
     public actual val route: String?
 ) {
+    public actual constructor(navigator: Navigator<out D>, route: String?) :
+        this(navigator, -1, route)
+
     @OptIn(InternalSerializationApi::class)
     public actual constructor(
         navigator: Navigator<out D>,
@@ -57,6 +63,7 @@ public actual constructor(
         typeMap: Map<KType, NavType<*>>,
     ) : this(
         navigator,
+        route?.serializer()?.hashCode() ?: -1,
         route?.serializer()?.generateRoutePattern(typeMap)
     ) {
         route?.apply {
@@ -277,6 +284,9 @@ public actual constructor(
             }
             if (route != null) {
                 destination.route = route
+            }
+            if (id != -1) {
+                destination.id = id
             }
         }
     }

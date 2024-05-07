@@ -271,6 +271,10 @@ public fun NavGraphBuilder.navigation(
  *
  * @return the newly constructed nested NavGraph
  */
+@Deprecated(
+    message = "Deprecated in favor of NavHost that supports sizeTransform",
+    level = DeprecationLevel.HIDDEN
+)
 public fun NavGraphBuilder.navigation(
     startDestination: String,
     route: String,
@@ -301,6 +305,63 @@ public fun NavGraphBuilder.navigation(
                 this.exitTransition = exitTransition
                 this.popEnterTransition = popEnterTransition
                 this.popExitTransition = popExitTransition
+            }
+        }
+    )
+}
+
+/**
+ * Construct a nested [NavGraph]
+ *
+ * @sample androidx.navigation.compose.samples.SizeTransformNav
+ *
+ * @param startDestination the starting destination's route for this NavGraph
+ * @param route the destination's unique route
+ * @param arguments list of arguments to associate with destination
+ * @param deepLinks list of deep links to associate with the destinations
+ * @param enterTransition callback to define enter transitions for destination in this NavGraph
+ * @param exitTransition callback to define exit transitions for destination in this NavGraph
+ * @param popEnterTransition callback to define pop enter transitions for destination in this
+ * NavGraph
+ * @param popExitTransition callback to define pop exit transitions for destination in this NavGraph
+ * @param sizeTransform callback to define the size transform for destinations in this NavGraph
+ * @param builder the builder used to construct the graph
+ *
+ * @return the newly constructed nested NavGraph
+ */
+public fun NavGraphBuilder.navigation(
+    startDestination: String,
+    route: String,
+    arguments: List<NamedNavArgument> = emptyList(),
+    deepLinks: List<NavDeepLink> = emptyList(),
+    enterTransition: (@JvmSuppressWildcards
+    AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
+    exitTransition: (@JvmSuppressWildcards
+    AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
+    popEnterTransition: (@JvmSuppressWildcards
+    AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?
+    )? = enterTransition,
+    popExitTransition: (@JvmSuppressWildcards
+    AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?
+    )? = exitTransition,
+    sizeTransform: (@JvmSuppressWildcards
+    AnimatedContentTransitionScope<NavBackStackEntry>.() -> SizeTransform?)? = null,
+    builder: NavGraphBuilder.() -> Unit
+) {
+    addDestination(
+        NavGraphBuilder(provider, startDestination, route).apply(builder).build().apply {
+            arguments.forEach { (argumentName, argument) ->
+                addArgument(argumentName, argument)
+            }
+            deepLinks.forEach { deepLink ->
+                addDeepLink(deepLink)
+            }
+            if (this is ComposeNavGraphNavigator.ComposeNavGraph) {
+                this.enterTransition = enterTransition
+                this.exitTransition = exitTransition
+                this.popEnterTransition = popEnterTransition
+                this.popExitTransition = popExitTransition
+                this.sizeTransform = sizeTransform
             }
         }
     )
