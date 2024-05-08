@@ -1226,8 +1226,7 @@ public actual open class NavController {
                 "NavController $this."
         }
 
-        val internalRoute = NavDestination.createRoute(route)
-        val deepLinkMatch = _graph!!.matchDeepLink(internalRoute)
+        val deepLinkMatch = _graph!!.matchDeepLink(route)
         if (deepLinkMatch != null) {
             val destination = deepLinkMatch.destination
             val args = destination.addInDefaultArgs(deepLinkMatch.matchingArgs) ?: Bundle()
