@@ -905,6 +905,7 @@ public actual open class NavController {
         )
     }
 
+    @OptIn(InternalSerializationApi::class)
     @MainThread
     private fun navigate(
         node: NavDestination,
@@ -923,6 +924,18 @@ public actual open class NavController {
                 navOptions.popUpToRoute != null ->
                     popped = popBackStackInternal(
                         navOptions.popUpToRoute!!,
+                        navOptions.isPopUpToInclusive(),
+                        navOptions.shouldPopUpToSaveState()
+                    )
+                navOptions.popUpToRouteClass != null ->
+                    popped = popBackStackInternal(
+                        navOptions.popUpToRouteClass!!.serializer().hashCode(),
+                        navOptions.isPopUpToInclusive(),
+                        navOptions.shouldPopUpToSaveState()
+                    )
+                navOptions.popUpToRouteObject != null ->
+                    popped = popBackStackInternal(
+                        navOptions.popUpToRouteObject!!,
                         navOptions.isPopUpToInclusive(),
                         navOptions.shouldPopUpToSaveState()
                     )

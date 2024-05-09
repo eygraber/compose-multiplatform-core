@@ -1750,6 +1750,9 @@ public actual open class NavController(
      * Navigate to a destination from the current navigation graph. This supports both navigating
      * via an [action][NavDestination.getAction] and directly navigating to a destination.
      *
+     * If given [NavOptions] pass in [NavOptions.restoreState] `true`, any args passed here will be
+     * overridden by the restored args.
+     *
      * @param resId an [action][NavDestination.getAction] id or a destination id to
      * navigate to
      * @param args arguments to pass to the destination
@@ -1760,6 +1763,7 @@ public actual open class NavController(
      * @throws IllegalArgumentException if the desired destination cannot be found from the
      *                                  current destination
      */
+    @OptIn(InternalSerializationApi::class)
     @MainThread
     public open fun navigate(
         @IdRes resId: Int,
@@ -1800,12 +1804,17 @@ public actual open class NavController(
             combinedArgs.putAll(args)
         }
         if (destId == 0 && finalNavOptions != null && (finalNavOptions.popUpToId != -1 ||
-                finalNavOptions.popUpToRoute != null)
+                finalNavOptions.popUpToRoute != null || finalNavOptions.popUpToRouteClass != null)
         ) {
             when {
                 finalNavOptions.popUpToRoute != null ->
                     popBackStack(
                         finalNavOptions.popUpToRoute!!, finalNavOptions.isPopUpToInclusive()
+                    )
+                finalNavOptions.popUpToRouteClass != null ->
+                    popBackStack(
+                        finalNavOptions.popUpToRouteClass!!.serializer().hashCode(),
+                        finalNavOptions.isPopUpToInclusive()
                     )
                 finalNavOptions.popUpToId != -1 ->
                     popBackStack(
@@ -1960,6 +1969,7 @@ public actual open class NavController(
         }
     }
 
+    @OptIn(InternalSerializationApi::class)
     @MainThread
     private fun navigate(
         node: NavDestination,
@@ -1978,6 +1988,18 @@ public actual open class NavController(
                 navOptions.popUpToRoute != null ->
                     popped = popBackStackInternal(
                         navOptions.popUpToRoute!!,
+                        navOptions.isPopUpToInclusive(),
+                        navOptions.shouldPopUpToSaveState()
+                    )
+                navOptions.popUpToRouteClass != null ->
+                    popped = popBackStackInternal(
+                        navOptions.popUpToRouteClass!!.serializer().hashCode(),
+                        navOptions.isPopUpToInclusive(),
+                        navOptions.shouldPopUpToSaveState()
+                    )
+                navOptions.popUpToRouteObject != null ->
+                    popped = popBackStackInternal(
+                        navOptions.popUpToRouteObject!!,
                         navOptions.isPopUpToInclusive(),
                         navOptions.shouldPopUpToSaveState()
                     )

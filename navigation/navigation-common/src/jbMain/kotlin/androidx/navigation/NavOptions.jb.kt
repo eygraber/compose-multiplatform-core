@@ -16,14 +16,15 @@
 
 package androidx.navigation
 
+import androidx.annotation.RestrictTo
 import kotlin.jvm.JvmOverloads
+import kotlin.reflect.KClass
 
 public actual class NavOptions internal constructor(
     private val singleTop: Boolean,
     private val restoreState: Boolean,
-    popUpToRoute: String?,
     private val popUpToInclusive: Boolean,
-    private val popUpToSaveState: Boolean,
+    private val popUpToSaveState: Boolean
 ) {
     /**
      * Route for the destination to pop up to before navigating. When set, all non-matching
@@ -34,8 +35,83 @@ public actual class NavOptions internal constructor(
      * @see isPopUpToInclusive
      * @see shouldPopUpToSaveState
      */
-    public actual var popUpToRoute: String? = popUpToRoute
+    public actual var popUpToRoute: String? = null
         private set
+
+    /**
+     * Route from a [KClass] for the destination to pop up to before navigating. When set,
+     * all non-matching destinations should be popped from the back stack.
+     * @return the destination route to pop up to, clearing all intervening destinations
+     * @see Builder.setPopUpTo
+     *
+     * @see isPopUpToInclusive
+     * @see shouldPopUpToSaveState
+     */
+    public actual var popUpToRouteClass: KClass<*>? = null
+        private set
+
+    /**
+     * Route from an Object for the destination to pop up to before navigating. When set,
+     * all non-matching destinations should be popped from the back stack.
+     * @return the destination route to pop up to, clearing all intervening destinations
+     * @see Builder.setPopUpTo
+     *
+     * @see isPopUpToInclusive
+     * @see shouldPopUpToSaveState
+     */
+    public actual var popUpToRouteObject: Any? = null
+        private set
+
+    internal constructor(
+        singleTop: Boolean,
+        restoreState: Boolean,
+        popUpToRoute: String?,
+        popUpToInclusive: Boolean,
+        popUpToSaveState: Boolean
+    ) : this(
+        singleTop,
+        restoreState,
+        popUpToInclusive,
+        popUpToSaveState
+    ) {
+        this.popUpToRoute = popUpToRoute
+    }
+
+    /**
+     * NavOptions stores special options for navigate actions
+     */
+    internal constructor(
+        singleTop: Boolean,
+        restoreState: Boolean,
+        popUpToRouteClass: KClass<*>?,
+        popUpToInclusive: Boolean,
+        popUpToSaveState: Boolean
+    ) : this(
+        singleTop,
+        restoreState,
+        popUpToInclusive,
+        popUpToSaveState
+    ) {
+        this.popUpToRouteClass = popUpToRouteClass
+    }
+
+    /**
+     * NavOptions stores special options for navigate actions
+     */
+    internal constructor(
+        singleTop: Boolean,
+        restoreState: Boolean,
+        popUpToRouteObject: Any,
+        popUpToInclusive: Boolean,
+        popUpToSaveState: Boolean
+    ) : this(
+        singleTop,
+        restoreState,
+        popUpToInclusive,
+        popUpToSaveState
+    ) {
+        this.popUpToRouteObject = popUpToRouteObject
+    }
 
     /**
      * Whether this navigation action should launch as single-top (i.e., there will be at most
@@ -78,6 +154,8 @@ public actual class NavOptions internal constructor(
         return singleTop == other.singleTop &&
             restoreState == other.restoreState &&
             popUpToRoute == other.popUpToRoute &&
+            popUpToRouteClass == other.popUpToRouteClass &&
+            popUpToRouteObject == other.popUpToRouteObject &&
             popUpToInclusive == other.popUpToInclusive &&
             popUpToSaveState == other.popUpToSaveState
     }
@@ -86,6 +164,8 @@ public actual class NavOptions internal constructor(
         var result = if (shouldLaunchSingleTop()) 1 else 0
         result = 31 * result + if (shouldRestoreState()) 1 else 0
         result = 31 * result + popUpToRoute.hashCode()
+        result = 31 * result + popUpToRouteClass.hashCode()
+        result = 31 * result + popUpToRouteObject.hashCode()
         result = 31 * result + if (isPopUpToInclusive()) 1 else 0
         result = 31 * result + if (shouldPopUpToSaveState()) 1 else 0
         return result
@@ -104,7 +184,13 @@ public actual class NavOptions internal constructor(
         if (popUpToRoute != null)
             if (popUpToRoute != null) {
                 sb.append("popUpTo(")
-                sb.append(popUpToRoute)
+                if (popUpToRoute != null) {
+                    sb.append(popUpToRoute)
+                } else if (popUpToRouteClass != null) {
+                    sb.append(popUpToRouteClass)
+                } else if (popUpToRouteObject != null) {
+                    sb.append(popUpToRouteObject)
+                }
                 if (popUpToInclusive) {
                     sb.append(" inclusive")
                 }
@@ -123,6 +209,8 @@ public actual class NavOptions internal constructor(
         private var singleTop = false
         private var restoreState = false
         private var popUpToRoute: String? = null
+        private var popUpToRouteClass: KClass<*>? = null
+        private var popUpToRouteObject: Any? = null
         private var popUpToInclusive = false
         private var popUpToSaveState = false
 
@@ -176,13 +264,99 @@ public actual class NavOptions internal constructor(
         }
 
         /**
+         * Pop up to a given destination before navigating. This pops all non-matching destinations
+         * from the back stack until this destination is found.
+         *
+         * @param T route from a [KClass] for destination to pop up to, clearing all
+         * intervening destinations.
+         * @param inclusive true to also pop the given destination from the back stack.
+         * @param saveState true if the back stack and the state of all destinations between the
+         * current destination and [T] should be saved for later restoration via
+         * [setRestoreState] or the `restoreState` attribute using the same route from [KClass]
+         * as [popUpToRouteClass] (note: this matching route is true whether [inclusive] is true or
+         * false).
+         * @return this Builder
+         *
+         * @see NavOptions.isPopUpToInclusive
+         */
+        @JvmOverloads
+        @Suppress("MissingGetterMatchingBuilder") // no need for getter
+        public actual inline fun <reified T : Any> setPopUpTo(
+            inclusive: Boolean,
+            saveState: Boolean
+        ): Builder {
+            setPopUpTo(T::class, inclusive, saveState)
+            return this
+        }
+
+        // this restricted public is needed so that the public reified [popUpTo] can call
+        // private popUpToRouteClass setter
+        @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+        public actual fun setPopUpTo(
+            klass: KClass<*>,
+            inclusive: Boolean,
+            saveState: Boolean
+        ): Builder {
+            popUpToRouteClass = klass
+            popUpToInclusive = inclusive
+            popUpToSaveState = saveState
+            return this
+        }
+
+        /**
+         * Pop up to a given destination before navigating. This pops all non-matching destinations
+         * from the back stack until this destination is found.
+         *
+         * @param route route from an Object for destination to pop up to, clearing all
+         * intervening destinations.
+         * @param inclusive true to also pop the given destination from the back stack.
+         * @param saveState true if the back stack and the state of all destinations between the
+         * current destination and [route] should be saved for later restoration via
+         * [setRestoreState] or the `restoreState` attribute using the same route from an Object
+         * as [popUpToRouteObject] (note: this matching route is true whether [inclusive] is
+         * true or false).
+         * @return this Builder
+         *
+         * @see NavOptions.isPopUpToInclusive
+         */
+        @JvmOverloads
+        @Suppress("MissingGetterMatchingBuilder")
+        public actual fun <T : Any> setPopUpTo(
+            route: T,
+            inclusive: Boolean,
+            saveState: Boolean
+        ): Builder {
+            popUpToRouteObject = route
+            popUpToInclusive = inclusive
+            popUpToSaveState = saveState
+            return this
+        }
+
+        /**
          * @return a constructed NavOptions
          */
         public actual fun build(): NavOptions {
-            return NavOptions(
-                singleTop, restoreState,
-                popUpToRoute, popUpToInclusive, popUpToSaveState
-            )
+            return if (popUpToRoute != null) {
+                NavOptions(
+                    singleTop, restoreState,
+                    popUpToRoute, popUpToInclusive, popUpToSaveState
+                )
+            } else if (popUpToRouteClass != null) {
+                NavOptions(
+                    singleTop, restoreState,
+                    popUpToRouteClass, popUpToInclusive, popUpToSaveState
+                )
+            } else if (popUpToRouteObject != null) {
+                NavOptions(
+                    singleTop, restoreState,
+                    popUpToRouteObject!!, popUpToInclusive, popUpToSaveState
+                )
+            } else {
+                NavOptions(
+                    singleTop, restoreState,
+                    null as String?, popUpToInclusive, popUpToSaveState
+                )
+            }
         }
     }
 }
