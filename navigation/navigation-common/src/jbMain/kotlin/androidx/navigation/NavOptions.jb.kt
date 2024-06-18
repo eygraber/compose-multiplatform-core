@@ -236,7 +236,9 @@ public actual class NavOptions internal constructor(
             saveState: Boolean
         ): Builder {
             popUpToRouteObject = route
-            setPopUpTo(route::class.serializer().hashCode(), inclusive, saveState)
+            popUpToId = -1
+            popUpToInclusive = inclusive
+            popUpToSaveState = saveState
             return this
         }
 
