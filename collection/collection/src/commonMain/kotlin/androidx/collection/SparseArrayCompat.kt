@@ -257,7 +257,7 @@ internal fun <E> SparseArrayCompat<E>.commonGet(key: Int): E? {
 
 @Suppress("NOTHING_TO_INLINE")
 internal fun <E> SparseArrayCompat<E>.commonGet(key: Int, defaultValue: E): E {
-    return internalGet(key, defaultValue)
+    return internalGet<E, E>(key, defaultValue)
 }
 
 @Suppress("NOTHING_TO_INLINE")
